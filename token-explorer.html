@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtuals Token Explorer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Bebas+Neue&family=Outfit:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg:      #04050a;
+    --surface: #080c14;
+    --card:    #0c1220;
+    --border:  #141e30;
+    --dim:     #1e2d45;
+    --text:    #d4e0f0;
+    --muted:   #4a6080;
+    --buy:     #00e5a0;
+    --sell:    #ff3d6e;
+    --pending: #f5a623;
+    --approve: #7b61ff;
+    --blue:    #3d8bff;
+    --mono:    'JetBrains Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --body:    'Outfit', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 20% 20%, rgba(0,229,160,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(61,139,255,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .logo {
+    font-family: var(--display);
+    font-size: 32px;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, var(--buy), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .live-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,229,160,0.06);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--buy);
+    letter-spacing: 2px;
+  }
+  .live-dot {
+    width: 7px; height: 7px;
+    background: var(--buy);
+    border-radius: 50%;
+    animation: blink 1.4s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--buy);
+  }
+  @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+  /* ── Search bar ── */
+  .search-wrap {
+    display: flex; gap: 12px; margin-bottom: 28px;
+  }
+  .search-input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--buy);
+    box-shadow: 0 0 0 3px rgba(0,229,160,0.08);
+  }
+  .search-input::placeholder { color: var(--muted); }
+  .search-btn {
+    background: var(--buy);
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 28px;
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .search-btn:hover { background: #00ffb3; transform: translateY(-1px); }
+  .search-btn:active { transform: translateY(0); }
+
+  /* ── Stats row ── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent, var(--blue));
+  }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+  .stat-value { font-family: var(--display); font-size: 26px; color: var(--accent, #fff); letter-spacing: 1px; }
+  .stat-sub { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Filter tabs ── */
+  .filter-row {
+    display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+  }
+  .ftab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .ftab:hover { border-color: var(--dim); color: var(--text); }
+  .ftab.active { color: #000; font-weight: 600; }
+  .ftab[data-f="all"].active   { background: var(--text); border-color: var(--text); }
+  .ftab[data-f="buy"].active   { background: var(--buy);  border-color: var(--buy); }
+  .ftab[data-f="sell"].active  { background: var(--sell); border-color: var(--sell); }
+  .ftab[data-f="pending"].active { background: var(--pending); border-color: var(--pending); }
+  .ftab[data-f="approve"].active { background: var(--approve); border-color: var(--approve); }
+
+  .tx-count {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Transactions table ── */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .table-head {
+    display: grid;
+    grid-template-columns: 100px 80px 140px 110px 110px 120px 90px 100px 70px;
+    padding: 12px 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.01);
+    gap: 8px;
+    align-items: center;
+  }
+  .tx-list { min-height: 400px; }
+
+  .tx-row {
+    display: grid;
+    grid-template-columns: 100px 80px 140px 140px 120px 100px 120px 80px;
+    padding: 13px 20px;
+    border-bottom: 1px solid rgba(20,30,48,0.8);
+    align-items: center;
+    gap: 8px;
+    transition: background 0.25s ease;
+    animation: slideIn 0.25s ease forwards;
+    opacity: 0;
+    position: relative;
+  }
+  .tx-row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--row-color, transparent);
+    transition: background 0.3s;
+  }
+  .tx-row.type-row-BUY      { background: rgba(0,229,160,0.03); }
+  .tx-row.type-row-SELL     { background: rgba(255,61,110,0.03); }
+  .tx-row.type-row-MINT     { background: rgba(0,200,255,0.03); }
+  .tx-row.type-row-TRANSFER { background: rgba(120,120,120,0.02); }
+  .tx-row.type-row-APPROVE  { background: rgba(123,97,255,0.03); }
+  .tx-row.type-row-BUY:hover      { background: rgba(0,229,160,0.07); }
+  .tx-row.type-row-SELL:hover     { background: rgba(255,61,110,0.07); }
+  .tx-row.type-row-MINT:hover     { background: rgba(0,200,255,0.07); }
+  .tx-row.type-row-TRANSFER:hover { background: rgba(120,120,120,0.05); }
+  .tx-row.type-row-APPROVE:hover  { background: rgba(123,97,255,0.07); }
+  .tx-row:hover { background: rgba(255,255,255,0.015); }
+  .tx-row:last-child { border-bottom: none; }
+  .tx-row.new-flash { animation: smoothIn 1.2s ease forwards; }
+  @keyframes slideIn { to { opacity:1; transform:translateY(0); } }
+  @keyframes smoothIn {
+    0%   { background: rgba(255,255,255,0.06); }
+    100% { background: transparent; }
+  }
+
+  /* Type badge */
+  .type-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 5px;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    text-align: center;
+  }
+  .type-BUY     { background: rgba(0,229,160,0.12); color: var(--buy);     border: 1px solid rgba(0,229,160,0.25); }
+  .type-SELL    { background: rgba(255,61,110,0.12); color: var(--sell);    border: 1px solid rgba(255,61,110,0.25); }
+  .type-PENDING { background: rgba(245,166,35,0.12); color: var(--pending); border: 1px solid rgba(245,166,35,0.25); }
+  .type-APPROVE  { background: rgba(123,97,255,0.12); color: var(--approve); border: 1px solid rgba(123,97,255,0.25); }
+  .type-MINT     { background: rgba(0,200,255,0.12);  color: #00c8ff;         border: 1px solid rgba(0,200,255,0.25); }
+  .type-TRANSFER { background: rgba(100,100,100,0.12);color: #888;            border: 1px solid rgba(100,100,100,0.25); }
+
+  .tx-hash {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--blue);
+    text-decoration: none;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tx-hash:hover { text-decoration: underline; }
+
+  .amount {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .amount.buy  { color: var(--buy); }
+  .amount.sell { color: var(--sell); }
+  .amount.neutral { color: var(--text); }
+
+  .addr {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .addr.mine {
+    color: #ffd700;
+    font-weight: 700;
+    text-shadow: 0 0 8px rgba(255,215,0,0.4);
+  }
+  .my-badge {
+    display: inline-block;
+    font-size: 8px;
+    background: rgba(255,215,0,0.15);
+    color: #ffd700;
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 3px;
+    padding: 1px 4px;
+    margin-left: 4px;
+    vertical-align: middle;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .time-cell {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .block-cell {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-cell { font-family: var(--mono); font-size: 10px; }
+  .status-confirmed { color: var(--buy); }
+  .status-pending   { color: var(--pending); }
+  .status-failed    { color: var(--sell); }
+
+  /* ── Empty / Loading ── */
+  .empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 350px; gap: 16px; color: var(--muted);
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 2px solid var(--border);
+    border-top-color: var(--buy);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-icon { font-size: 40px; opacity: 0.3; }
+  .empty-text { font-size: 14px; }
+
+  /* ── Log ── */
+  .log {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-top: 16px;
+    max-height: 80px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .log div { padding: 1px 0; }
+  .lok { color: var(--buy); }
+  .lwn { color: var(--pending); }
+  .ler { color: var(--sell); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">VIRTUALS EXPLORER</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">
+        TXS: <span id="totalTx" style="color:var(--text)">0</span> &nbsp;|&nbsp;
+        <span id="clock" style="color:var(--text)">—</span>
+      </span>
+      <div class="live-pill"><div class="live-dot"></div>LIVE</div>
+    </div>
+  </header>
+
+  <div class="search-wrap">
+    <input class="search-input" id="tokenInput"
+      placeholder="Enter token address  e.g. 0xcb5f8ce4c8ec8ed2544294be56331a0fecb94374"
+      value="" />
+    <button class="search-btn" onclick="loadToken()">LOAD TOKEN</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat" style="--accent:var(--buy)">
+      <div class="stat-label">Total Buys</div>
+      <div class="stat-value" id="sBuys">0</div>
+      <div class="stat-sub">confirmed</div>
+    </div>
+    <div class="stat" style="--accent:var(--sell)">
+      <div class="stat-label">Total Sells</div>
+      <div class="stat-value" id="sSells">0</div>
+      <div class="stat-sub">confirmed</div>
+    </div>
+    <div class="stat" style="--accent:var(--pending)">
+      <div class="stat-label">Pending</div>
+      <div class="stat-value" id="sPending">0</div>
+      <div class="stat-sub">in mempool</div>
+    </div>
+    <div class="stat" style="--accent:var(--approve)">
+      <div class="stat-label">Approvals</div>
+      <div class="stat-value" id="sApprove">0</div>
+      <div class="stat-sub">pending</div>
+    </div>
+    <div class="stat" style="--accent:var(--blue)">
+      <div class="stat-label">Buy/Sell Ratio</div>
+      <div class="stat-value" id="sRatio">—</div>
+      <div class="stat-sub">buy pressure</div>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <div class="ftab active" data-f="all"     onclick="setFilter('all')">ALL</div>
+    <div class="ftab"        data-f="buy"     onclick="setFilter('buy')">BUYS</div>
+    <div class="ftab"        data-f="sell"    onclick="setFilter('sell')">SELLS</div>
+    <div class="ftab"        data-f="pending" onclick="setFilter('pending')">PENDING</div>
+    <div class="ftab"        data-f="approve"  onclick="setFilter('approve')">APPROVALS</div>
+    <div class="ftab"        data-f="mint"     onclick="setFilter('mint')">MINT</div>
+    <div class="ftab"        data-f="transfer" onclick="setFilter('transfer')">TRANSFERS</div>
+    <div class="tx-count" id="txCount">0 transactions</div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-head">
+      <div>TYPE</div><div>STATUS</div><div>TX HASH</div>
+      <div>FROM</div><div>TO</div><div>AMOUNT</div><div>BLOCK</div>
+      <div>TIME</div><div>GAS</div>
+    </div>
+    <div class="tx-list" id="txList">
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">Enter a token address to start exploring</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log" id="logBox"><div class="lok">Ready — enter token address above</div></div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const HTTP = 'https://base-mainnet.g.alchemy.com/v2/INMQ9EptygQQJMdP7Yckl';
+const WSS  = 'wss://base-mainnet.g.alchemy.com/v2/INMQ9EptygQQJMdP7Yckl';
+
+const FACTORY         = '0x1a540088125d00dd3990f9da45ca0859af4d3b01';
+const MY_WALLET       = '0xd232dfce0d7964459c8fc7811958101930d2242f'; // highlighted in UI
+const BONDING_HANDLER = '0x02fe8ec3d9bbf7318eb54590bcc39198a8b47ded';
+
+// keccak256 of Transfer(address,address,uint256) — used to detect buy/sell
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+// keccak256 of Approval(address,address,uint256)
+const APPROVAL_TOPIC = '0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925';
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let txs       = []; // all transactions
+let filter    = 'all';
+let tokenAddr = '';
+let ws        = null;
+let subId     = null;
+let msgIdCtr  = 1;
+
+// ─── LOG ─────────────────────────────────────────────────────────────────────
+function lg(msg, cls='') {
+  const b = document.getElementById('logBox');
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  b.insertBefore(d, b.firstChild);
+  while (b.children.length > 20) b.removeChild(b.lastChild);
+}
+
+// ─── RPC ─────────────────────────────────────────────────────────────────────
+async function rpc(method, params) {
+  const r = await fetch(HTTP, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({jsonrpc:'2.0',id:1,method,params})
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message);
+  return j.result;
+}
+
+// ─── CLASSIFY TX ─────────────────────────────────────────────────────────────
+// A Transfer FROM bonding pair TO user = BUY (token coming to user)
+// A Transfer FROM user TO bonding pair = SELL (token leaving user)
+// An Approval log = APPROVE
+
+function classifyLog(log, token) {
+  const topic0 = (log.topics||[])[0];
+  if (topic0 === APPROVAL_TOPIC) return 'APPROVE';
+  if (topic0 === TRANSFER_TOPIC) {
+    const fromLow = log.topics[1] ? ('0x'+log.topics[1].slice(26)).toLowerCase() : '';
+    const toLow   = log.topics[2] ? ('0x'+log.topics[2].slice(26)).toLowerCase() : '';
+    if (fromLow === FACTORY || fromLow === BONDING_HANDLER) return 'BUY';
+    if (toLow   === FACTORY || toLow   === BONDING_HANDLER) return 'SELL';
+    if (fromLow === '0x0000000000000000000000000000000000000000') return 'MINT';
+    return 'TRANSFER';
+  }
+  return 'TRANSFER';
+}
+
+// ─── LOAD HISTORICAL LOGS ────────────────────────────────────────────────────
+async function loadHistory(token) {
+  lg('Fetching all transfers via Alchemy…');
+
+  let pageKey = undefined;
+  let allTransfers = [];
+
+  // Paginate through ALL transfers for this token contract — one API, no limits
+  do {
+    const body = {
+      jsonrpc: '2.0', id: 1,
+      method: 'alchemy_getAssetTransfers',
+      params: [{
+        contractAddresses: [token],
+        category: ['erc20'],
+        withMetadata: true,
+        excludeZeroValue: false,
+        maxCount: '0x3e8', // 1000 per page
+        order: 'desc',
+        pageKey: pageKey,
+      }]
+    };
+    const r = await fetch(HTTP, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const j = await r.json();
+    const result = j.result || {};
+    const batch  = result.transfers || [];
+    allTransfers = allTransfers.concat(batch);
+    pageKey = result.pageKey; // undefined when no more pages
+    lg('Fetched ' + allTransfers.length + ' transfers…');
+    // Stop after 5000 to avoid hanging forever on huge tokens
+    if (allTransfers.length >= 5000) break;
+  } while (pageKey);
+
+  // Detect the bonding curve pair address dynamically:
+  // It's the address that appears most frequently as both sender and receiver
+  // In Virtuals, the pair contract holds tokens and passes them through on buy/sell
+  // The pair address is NOT the factory or bonding handler
+  // Strategy: find the non-zero, non-factory address that appears most as 'from' AND 'to'
+  const addrCount = {};
+  allTransfers.forEach(t => {
+    const f = (t.from||'').toLowerCase();
+    const to = (t.to||'').toLowerCase();
+    if (f && f !== '0x0000000000000000000000000000000000000000') addrCount[f] = (addrCount[f]||0) + 1;
+    if (to) addrCount[to] = (addrCount[to]||0) + 1;
+  });
+  // Remove known addresses
+  delete addrCount[FACTORY];
+  delete addrCount[BONDING_HANDLER];
+  delete addrCount['0x0000000000000000000000000000000000000000'];
+  delete addrCount[token.toLowerCase()];
+  // The pair/bonding curve is the most frequent intermediary address
+  const pairAddr = Object.entries(addrCount).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+  if (pairAddr) lg('Detected pair/bonding curve: ' + pairAddr, 'lok');
+
+  txs = allTransfers.map(t => {
+    const fromLow = (t.from||'').toLowerCase();
+    const toLow   = (t.to||'').toLowerCase();
+    const ZERO    = '0x0000000000000000000000000000000000000000';
+
+    let type;
+
+    if (fromLow === ZERO) {
+      // Mint — token creation
+      type = 'MINT';
+    } else if (fromLow === FACTORY || fromLow === pairAddr || fromLow === BONDING_HANDLER) {
+      // Tokens coming FROM bonding infrastructure TO a wallet = BUY
+      type = 'BUY';
+    } else if (toLow === FACTORY || toLow === pairAddr || toLow === BONDING_HANDLER) {
+      // Tokens going FROM wallet TO bonding infrastructure = SELL
+      type = 'SELL';
+    } else {
+      // Wallet to wallet = TRANSFER
+      type = 'TRANSFER';
+    }
+
+    return {
+      type,
+      status:  'confirmed',
+      hash:    t.hash,
+      from:    t.from || '?',
+      to:      t.to   || '?',
+      amount:  t.rawContract && t.rawContract.value ? BigInt(t.rawContract.value) : 0n,
+      block:   t.blockNum ? parseInt(t.blockNum, 16) : 0,
+      ts:      t.metadata && t.metadata.blockTimestamp
+                 ? new Date(t.metadata.blockTimestamp).getTime() : 0,
+      pending: false,
+    };
+  });
+
+  lg('Loaded ' + txs.length + ' total transfers', 'lok');
+  render();
+}
+
+// ─── PENDING TX DETECTION VIA LOG SUBSCRIPTION ───────────────────────────────
+// Free Alchemy plan: use log subscriptions for confirmed + pending-ish detection
+// We subscribe to Transfer + Approval logs on the token address live
+
+function startLiveSubscription(token) {
+  if (ws) { try { ws.close(); } catch(e){} }
+  subId = null;
+  let pingInterval = null;
+  let reconnectTimer = null;
+  let intentionalClose = false;
+
+  function cleanup() {
+    if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  }
+
+  function connect() {
+    intentionalClose = false;
+    ws = new WebSocket(WSS);
+
+    ws.onopen = () => {
+      lg('Live subscription connected ✓', 'lok');
+      const id = msgIdCtr++;
+      ws.send(JSON.stringify({
+        jsonrpc:'2.0', id,
+        method:'eth_subscribe',
+        params:['logs', { address: token, topics: [[TRANSFER_TOPIC, APPROVAL_TOPIC]] }]
+      }));
+
+      // Keep-alive ping every 20s to prevent browser from closing idle WS
+      pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ jsonrpc:'2.0', id:99, method:'eth_blockNumber', params:[] }));
+        }
+      }, 20000);
+    };
+
+    ws.onmessage = (raw) => {
+      let msg; try { msg = JSON.parse(raw.data); } catch(e){ return; }
+
+      // Subscription confirmed
+      if (msg.result && typeof msg.result === 'string' && msg.id !== 99) {
+        subId = msg.result;
+        lg('Subscribed id=' + subId.slice(0,12) + '…', 'lok');
+        return;
+      }
+
+      // Ping response — ignore
+      if (msg.id === 99) return;
+
+      if (msg.method !== 'eth_subscription' || !msg.params || msg.params.subscription !== subId) return;
+
+      const log = msg.params.result;
+      if (!log) return;
+
+      const topic0     = (log.topics||[])[0];
+      const isApproval = topic0 === APPROVAL_TOPIC;
+      const addr1 = log.topics[1] ? '0x'+log.topics[1].slice(26) : '?';
+      const addr2 = log.topics[2] ? '0x'+log.topics[2].slice(26) : '?';
+
+      let amount = 0n;
+      try {
+        if (log.data && log.data !== '0x' && log.data.length >= 66) {
+          amount = BigInt(log.data.slice(0,66));
+        }
+      } catch(e){}
+
+      const newTx = {
+        type:    classifyLog(log, token),
+        status:  log.blockNumber ? 'confirmed' : 'pending',
+        hash:    log.transactionHash,
+        from:    addr1,
+        to:      addr2,
+        label:   isApproval ? { from:'OWNER', to:'SPENDER' } : { from:'FROM', to:'TO' },
+        amount,
+        block:   log.blockNumber ? parseInt(log.blockNumber,16) : 0,
+        ts:      Date.now(),
+        pending: !log.blockNumber,
+        isNew:   true,
+      };
+
+      const existing = txs.findIndex(t => t.hash === newTx.hash && t.from === newTx.from);
+      if (existing >= 0) {
+        txs[existing] = { ...txs[existing], ...newTx, isNew: false };
+      } else {
+        txs.unshift(newTx);
+      }
+
+      render();
+      lg((newTx.pending?'⏳':'✅') + ' ' + newTx.type + ' ' + (newTx.hash||'').slice(0,12) + '…',
+         newTx.pending ? 'lwn' : 'lok');
+    };
+
+    ws.onerror = () => {};  // suppress error logs — handled by onclose
+
+    ws.onclose = (e) => {
+      cleanup();
+      if (intentionalClose) return;
+      // Exponential backoff: 3s, 6s, 12s max
+      const delay = Math.min(12000, 3000 * Math.pow(2, ws._retries || 0));
+      ws._retries = (ws._retries || 0) + 1;
+      lg('WS reconnecting in ' + (delay/1000) + 's…', 'lwn');
+      reconnectTimer = setTimeout(connect, delay);
+    };
+  }
+
+  connect();
+
+  // Return cleanup function for when user loads a new token
+  return () => { intentionalClose = true; cleanup(); if(ws) ws.close(); };
+}
+
+// ─── LOAD TOKEN ───────────────────────────────────────────────────────────────
+async function loadToken() {
+  const input = document.getElementById('tokenInput').value.trim();
+  if (!input || input.length !== 42) {
+    alert('Enter a valid 42-char token address');
+    return;
+  }
+
+  tokenAddr = input.toLowerCase();
+  txs = [];
+  render();
+
+  document.getElementById('txList').innerHTML =
+    '<div class="empty"><div class="spinner"></div><div class="empty-text">Loading history…</div></div>';
+
+  try {
+    await loadHistory(tokenAddr);
+    if (window._wssCleanup) window._wssCleanup();
+    window._wssCleanup = startLiveSubscription(tokenAddr);
+  } catch(e) {
+    lg('Error: ' + e.message, 'ler');
+    document.getElementById('txList').innerHTML =
+      '<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-text">' + e.message + '</div></div>';
+  }
+}
+
+// ─── FILTER ───────────────────────────────────────────────────────────────────
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.ftab').forEach(t => t.classList.toggle('active', t.dataset.f === f));
+  render();
+}
+
+// ─── FORMAT HELPERS ───────────────────────────────────────────────────────────
+function fmtAddr(a) { return a ? a.slice(0,8)+'…'+a.slice(-6) : '?'; }
+function fmtHash(h) { return h ? h.slice(0,8)+'…'+h.slice(-6) : '?'; }
+function fmtAmount(big) {
+  if (!big || big === 0n) return '—';
+  const n = Number(big) / 1e18;
+  if (n >= 1e9)  return (n/1e9).toFixed(2) + 'B';
+  if (n >= 1e6)  return (n/1e6).toFixed(2) + 'M';
+  if (n >= 1e3)  return (n/1e3).toFixed(2) + 'K';
+  return n.toFixed(4);
+}
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const s = Math.floor((Date.now()-ts)/1000);
+  if (s < 60)   return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return new Date(ts).toLocaleDateString();
+}
+function expUrl(hash) { return 'https://basescan.org/tx/' + hash; }
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  // Stats
+  const buys    = txs.filter(t => t.type==='BUY'     && !t.pending).length;
+  const sells   = txs.filter(t => t.type==='SELL'    && !t.pending).length;
+  const pending = txs.filter(t => t.pending).length;
+  const approvals = txs.filter(t => t.type==='APPROVE').length;
+  const ratio   = (buys+sells) > 0 ? Math.round(buys/(buys+sells)*100) + '%' : '—';
+
+  document.getElementById('sBuys').textContent    = buys;
+  document.getElementById('sSells').textContent   = sells;
+  document.getElementById('sPending').textContent = pending;
+  document.getElementById('sApprove').textContent = approvals;
+  document.getElementById('sRatio').textContent   = ratio;
+  document.getElementById('totalTx').textContent  = txs.length;
+
+  // Filter
+  let show = txs;
+  if (filter === 'buy')     show = txs.filter(t => t.type === 'BUY'    && !t.pending);
+  if (filter === 'sell')    show = txs.filter(t => t.type === 'SELL'   && !t.pending);
+  if (filter === 'pending') show = txs.filter(t => t.pending);
+  if (filter === 'approve')  show = txs.filter(t => t.type === 'APPROVE');
+  if (filter === 'mint')     show = txs.filter(t => t.type === 'MINT');
+  if (filter === 'transfer') show = txs.filter(t => t.type === 'TRANSFER');
+
+  document.getElementById('txCount').textContent = show.length + ' transactions';
+
+  const list = document.getElementById('txList');
+  if (show.length === 0 && txs.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Enter a token address above</div></div>';
+    return;
+  }
+  if (show.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">No ' + filter + ' transactions found</div></div>';
+    return;
+  }
+
+  const typeColor = { BUY: 'var(--buy)', SELL: 'var(--sell)', APPROVE: 'var(--approve)', PENDING: 'var(--pending)' };
+
+  list.innerHTML = show.slice(0, 200).map((t, i) => {
+    const rowColor = t.pending ? 'var(--pending)' : typeColor[t.type] || 'var(--blue)';
+    const typeLbl  = t.pending ? 'PENDING' : t.type;
+    const amtCls   = t.type==='BUY' ? 'buy' : t.type==='SELL' ? 'sell' : 'neutral';
+    const stCls    = t.pending ? 'status-pending' : 'status-confirmed';
+    const stTxt    = t.pending ? '⏳ PENDING' : '✅ CONFIRMED';
+
+    return `<div class="tx-row type-row-${typeLbl}${t.isNew?' new-flash':''}" style="--row-color:${rowColor};animation-delay:${Math.min(i*10,200)}ms">
+      <div><span class="type-badge type-${typeLbl}">${typeLbl}</span></div>
+      <div class="status-cell ${stCls}">${stTxt}</div>
+      <div><a class="tx-hash" href="${expUrl(t.hash)}" target="_blank">${fmtHash(t.hash)}</a></div>
+      <div class="addr${t.from&&t.from.toLowerCase()===MY_WALLET?' mine':''}" title="${t.from}">${fmtAddr(t.from)}${t.from&&t.from.toLowerCase()===MY_WALLET?'<span class=\"my-badge\">ME</span>':''}</div>
+      <div class="addr${t.to&&t.to.toLowerCase()===MY_WALLET?' mine':''}" title="${t.to}">
+        ${t.type==='APPROVE'?'<span style=\"font-size:9px;color:var(--approve);margin-right:3px\">SPENDER</span>':''}
+        ${fmtAddr(t.to)}${t.to&&t.to.toLowerCase()===MY_WALLET?'<span class=\"my-badge\">ME</span>':''}
+      </div>
+      <div class="amount ${amtCls}">${fmtAmount(t.amount)}</div>
+      <div class="block-cell">${t.block ? '#'+t.block.toLocaleString() : '—'}</div>
+      <div class="time-cell" data-ts="${t.ts}">${fmtTime(t.ts)}</div>
+      <div class="time-cell">${t.pending ? '…' : '✓'}</div>
+    </div>`;
+  }).join('');
+}
+
+// Clock — only update clock and time cells, NOT full re-render (causes blinking)
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+  // Update time cells in-place without re-rendering rows
+  document.querySelectorAll('.time-cell[data-ts]').forEach(el => {
+    el.textContent = fmtTime(parseInt(el.dataset.ts));
+  });
+}, 10000);
+
+// Enter key to load
+document.getElementById('tokenInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') loadToken();
+});
+</script>
+</body>
+</html>
